@@ -21,120 +21,170 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
 /** DidChangeAuthlocalPlugin */
-class DidChangeAuthlocalPlugin: FlutterPlugin, MethodCallHandler {
-  /// The MethodChannel that will the communication between Flutter and native Android
-  ///
-  /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-  /// when the Flutter Engine is detached from the Activity
-  private lateinit var channel : MethodChannel
-  private var keyStore: KeyStore? = null
-  private val KEY_NAME = "did_change_authlocal"
-  private var biometricPrompt: BiometricPrompt? = null
+class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
+    /// The MethodChannel that will the communication between Flutter and native Android
+    ///
+    /// This local reference serves to register the plugin with the Flutter Engine and unregister it
+    /// when the Flutter Engine is detached from the Activity
+    private lateinit var channel: MethodChannel
+    private var keyStore: KeyStore? = null
+    private val KEY_NAME = "did_change_authlocal"
+    private var biometricPrompt: BiometricPrompt? = null
 
 
-  override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "did_change_authlocal")
-    channel.setMethodCallHandler(this)
-  }
-
-  @RequiresApi(Build.VERSION_CODES.N)
-  override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-    if (call.method == "check") {
-      settingFingerPrint(result)
-    } else {
-      result.notImplemented()
+    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+        channel = MethodChannel(
+            flutterPluginBinding.binaryMessenger,
+            "did_change_authlocal"
+        )
+        channel.setMethodCallHandler(this)
     }
-  }
 
-  override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-    channel.setMethodCallHandler(null)
-  }
-
-  @RequiresApi(Build.VERSION_CODES.N)
-  private fun settingFingerPrint( result: Result) {
-    val cipher: Cipher = getCipher()
-    val secretKey: SecretKey = getSecretKey()
-
-    try {
-      cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-
-      result.success("biometric_valid")
-
-    } catch (e: KeyPermanentlyInvalidatedException) {
-
-      result.error("biometric_did_change",
-        "Yes your hand has been changed, please login to activate again",e.toString())
-
-    } catch (e: InvalidKeyException) {
-      e.printStackTrace()
-      result.error("biometric_invalid","Invalid biometric",e.toString())
+    @RequiresApi(Build.VERSION_CODES.N)
+    override fun onMethodCall(
+        @NonNull call: MethodCall,
+        @NonNull result: Result
+    ) {
+        if (call.method == "check") {
+            settingFingerPrint(result)
+        } else {
+            result.notImplemented()
+        }
     }
-    //Title require 
-    val promptInfo = BiometricPrompt.PromptInfo.Builder().setTitle("Biometric").setDescription("Check Biometric").setNegativeButtonText("OK").build()
 
-    try {
-      cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-      biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
-    } catch (e: KeyPermanentlyInvalidatedException) {
-      keyStore?.deleteEntry(KEY_NAME)
-      if (getCurrentKey(KEY_NAME) == null) {
-        generateSecretKey(KeyGenParameterSpec.Builder(KEY_NAME,
-          KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-          .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-          .setUserAuthenticationRequired(true) // Invalidate the keys if the user has registered a new biometric
-          .setInvalidatedByBiometricEnrollment(true).build())
-      }
+    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+        channel.setMethodCallHandler(null)
+    }
 
-    }
-  }
-  fun getCurrentKey(keyName: String): Key? {
-    keyStore?.load(null)
-    return keyStore?.getKey(keyName, null)
-  }
+    @RequiresApi(Build.VERSION_CODES.N)
+    private fun settingFingerPrint(result: Result) {
+        Log.d("settingFingerPrint called result:", result.toString());
+        val cipher: Cipher = getCipher()
+        val secretKey: SecretKey = getSecretKey()
 
-  @RequiresApi(Build.VERSION_CODES.N)
-  fun getSecretKey(): SecretKey {
-    try {
-      keyStore = KeyStore.getInstance("AndroidKeyStore")
-    } catch (e: Exception) {
-      e.printStackTrace()
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+
+            result.success("biometric_valid")
+
+        } catch (e: KeyPermanentlyInvalidatedException) {
+
+            Log.d("KeyPermanentlyInvalidatedException thrown:", e.toString());
+            result.error(
+                "biometric_did_change",
+                "Yes your fingerprint has changed, please login to activate again",
+                e.toString()
+            )
+
+        } catch (e: InvalidKeyException) {
+            Log.d("InvalidKeyException thrown: ", e.toString());
+            e.printStackTrace()
+            result.error("biometric_invalid", "Invalid biometric", e.toString())
+        }
+        //Title require
+        val promptInfo =
+            BiometricPrompt.PromptInfo.Builder().setTitle("Biometric")
+                .setDescription("Check Biometric").setNegativeButtonText("OK")
+                .build()
+
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+            biometricPrompt?.authenticate(
+                promptInfo,
+                BiometricPrompt.CryptoObject(cipher)
+            )
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            Log.d("KeyPermanentlyInvalidatedException thrown: ", e.toString());
+            keyStore?.deleteEntry(KEY_NAME)
+            if (getCurrentKey(KEY_NAME) == null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    generateSecretKey(
+                        KeyGenParameterSpec.Builder(
+                            KEY_NAME,
+                            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                        ).setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                            .setUserAuthenticationRequired(true) // Invalidate the keys if the user has registered a new biometric
+                            .setInvalidatedByBiometricEnrollment(true).build()
+                    )
+                }
+                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    // For Android 6, set up the key without setInvalidatedByBiometricEnrollment
+                    generateSecretKey(
+                        KeyGenParameterSpec.Builder(
+                            KEY_NAME,
+                            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                        ).setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                            .setUserAuthenticationRequired(true)
+                            .build()
+                    )
+                } else {
+                    Log.d("Auth", "Key generation with biometric requirement is not supported on this device version")
+                }
+            }
+        }
     }
-    var keyGenerator: KeyGenerator? = null
-    try {
-      keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-    } catch (e: Exception) {
-      e.printStackTrace()
+
+    fun getCurrentKey(keyName: String): Key? {
+        keyStore?.load(null)
+        return keyStore?.getKey(keyName, null)
     }
-    try {
-      if (getCurrentKey(KEY_NAME) == null) {
-        keyGenerator!!.init(
-          KeyGenParameterSpec.Builder(KEY_NAME,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT).setBlockModes(
-            KeyProperties.BLOCK_MODE_CBC)
-            .setUserAuthenticationRequired(true).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-            .setInvalidatedByBiometricEnrollment(true)
-            .build())
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    fun getSecretKey(): SecretKey {
+        try {
+            keyStore = KeyStore.getInstance("AndroidKeyStore")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        var keyGenerator: KeyGenerator? = null
+        try {
+            keyGenerator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES,
+                "AndroidKeyStore"
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            if (getCurrentKey(KEY_NAME) == null) {
+                keyGenerator!!.init(
+                    KeyGenParameterSpec.Builder(
+                        KEY_NAME,
+                        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                    ).setBlockModes(
+                        KeyProperties.BLOCK_MODE_CBC
+                    )
+                        .setUserAuthenticationRequired(true)
+                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                        .setInvalidatedByBiometricEnrollment(true)
+                        .build()
+                )
+                keyGenerator.generateKey()
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return keyStore?.getKey(KEY_NAME, null) as SecretKey
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun getCipher(): Cipher {
+        return Cipher.getInstance(
+            KeyProperties.KEY_ALGORITHM_AES + "/"
+                    + KeyProperties.BLOCK_MODE_CBC + "/"
+                    + KeyProperties.ENCRYPTION_PADDING_PKCS7
+        )
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun generateSecretKey(keyGenParameterSpec: KeyGenParameterSpec) {
+        val keyGenerator = KeyGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore"
+        )
+        keyGenerator.init(keyGenParameterSpec)
         keyGenerator.generateKey()
-      }
-
-    } catch (e: Exception) {
-      e.printStackTrace()
     }
-    return keyStore?.getKey(KEY_NAME, null) as SecretKey
-  }
-
-  @RequiresApi(Build.VERSION_CODES.M)
-  fun getCipher(): Cipher {
-    return Cipher.getInstance(
-      KeyProperties.KEY_ALGORITHM_AES + "/"
-              + KeyProperties.BLOCK_MODE_CBC + "/"
-              + KeyProperties.ENCRYPTION_PADDING_PKCS7)
-  }
-  @RequiresApi(Build.VERSION_CODES.M)
-  fun generateSecretKey(keyGenParameterSpec: KeyGenParameterSpec) {
-    val keyGenerator = KeyGenerator.getInstance(
-      KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-    keyGenerator.init(keyGenParameterSpec)
-    keyGenerator.generateKey()
-  }
 }

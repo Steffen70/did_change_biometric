@@ -56,6 +56,7 @@ class DidChangeAuthLocal {
       final result = await methodChannel.invokeMethod('check');
       return result == 'biometric_valid' ? AuthLocalStatus.valid : null;
     } on PlatformException catch (e) {
+      debugPrint('PlatformException occurred: ${e.code}: ${e.message}');
       switch (e.code) {
         case 'biometric_did_change':
           return AuthLocalStatus.changed;
@@ -65,6 +66,7 @@ class DidChangeAuthLocal {
           return null;
       }
     } on MissingPluginException catch (e) {
+      debugPrint('MissingPluginException occurred: ${e.message}');
       debugPrint(e.message);
       return null;
     }
