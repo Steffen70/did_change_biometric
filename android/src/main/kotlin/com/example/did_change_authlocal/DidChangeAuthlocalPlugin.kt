@@ -58,7 +58,6 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
 
     @RequiresApi(Build.VERSION_CODES.N)
     private fun settingFingerPrint(result: Result) {
-        Log.d("settingFingerPrint called result:", result.toString());
         val cipher: Cipher = getCipher()
         val secretKey: SecretKey = getSecretKey()
 
@@ -68,8 +67,6 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
             result.success("biometric_valid")
 
         } catch (e: KeyPermanentlyInvalidatedException) {
-
-            Log.d("KeyPermanentlyInvalidatedException thrown:", e.toString());
             result.error(
                 "biometric_did_change",
                 "Yes your fingerprint has changed, please login to activate again",
@@ -77,7 +74,6 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
             )
 
         } catch (e: InvalidKeyException) {
-            Log.d("InvalidKeyException thrown: ", e.toString());
             e.printStackTrace()
             result.error("biometric_invalid", "Invalid biometric", e.toString())
         }
@@ -94,7 +90,6 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
                 BiometricPrompt.CryptoObject(cipher)
             )
         } catch (e: KeyPermanentlyInvalidatedException) {
-            Log.d("KeyPermanentlyInvalidatedException thrown: ", e.toString());
             keyStore?.deleteEntry(KEY_NAME)
             if (getCurrentKey(KEY_NAME) == null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -107,8 +102,7 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
                             .setUserAuthenticationRequired(true) // Invalidate the keys if the user has registered a new biometric
                             .setInvalidatedByBiometricEnrollment(true).build()
                     )
-                }
-                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     // For Android 6, set up the key without setInvalidatedByBiometricEnrollment
                     generateSecretKey(
                         KeyGenParameterSpec.Builder(
@@ -120,7 +114,11 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
                             .build()
                     )
                 } else {
-                    Log.d("Auth", "Key generation with biometric requirement is not supported on this device version")
+                    result.error(
+                        "device not supported",
+                        "Key generation with biometric requirement is not supported on this device version",
+                        e.toString()
+                    )
                 }
             }
         }
