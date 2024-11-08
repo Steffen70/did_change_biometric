@@ -97,27 +97,14 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
                         KeyGenParameterSpec.Builder(
                             KEY_NAME,
                             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                        ).setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-                            .setUserAuthenticationRequired(true) // Invalidate the keys if the user has registered a new biometric
-                            .setInvalidatedByBiometricEnrollment(true).build()
-                    )
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    // For Android 6, set up the key without setInvalidatedByBiometricEnrollment
-                    generateSecretKey(
-                        KeyGenParameterSpec.Builder(
-                            KEY_NAME,
-                            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                        ).setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-                            .setUserAuthenticationRequired(true)
-                            .build()
-                    )
-                } else {
-                    result.error(
-                        "device not supported",
-                        "Key generation with biometric requirement is not supported on this device version",
-                        e.toString()
+                        ).apply {
+                            setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                            setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                            setUserAuthenticationRequired(true)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                setInvalidatedByBiometricEnrollment(true) // Invalidate the keys if the user has registered a new biometric
+                            }
+                        }.build()
                     )
                 }
             }
@@ -151,13 +138,14 @@ class DidChangeAuthlocalPlugin : FlutterPlugin, MethodCallHandler {
                     KeyGenParameterSpec.Builder(
                         KEY_NAME,
                         KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                    ).setBlockModes(
-                        KeyProperties.BLOCK_MODE_CBC
-                    )
-                        .setUserAuthenticationRequired(true)
-                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-                        .setInvalidatedByBiometricEnrollment(true)
-                        .build()
+                    ).apply {
+                        setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                        setUserAuthenticationRequired(true)
+                        setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            setInvalidatedByBiometricEnrollment(true)
+                        }
+                    }.build()
                 )
                 keyGenerator.generateKey()
             }

@@ -50,7 +50,7 @@ class DidChangeAuthLocal {
   }
 
   //For Android ( Only Fingerprint )
-  //If user does not update Finger then Biometric Status will be AuthLocalStatus.valid
+  //If user does not update Fingerprint then Biometric Status will be AuthLocalStatus.valid
   Future<AuthLocalStatus?> checkBiometricAndroid() async {
     try {
       final result = await methodChannel.invokeMethod('check');
