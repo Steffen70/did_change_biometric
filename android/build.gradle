@@ -15,6 +15,7 @@ allprojects {
 
 android {
     compileSdkVersion 34
+    namespace 'com.example.did_change_authlocal'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
